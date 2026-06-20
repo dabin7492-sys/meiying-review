@@ -256,7 +256,7 @@ export default function AdminPage() {
       <div style={{ background: 'linear-gradient(135deg, #1a252f, #2c3e50)', color: 'white', padding: '16px 24px' }}>
         <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 'bold' }}>🛠 Suzzzy-review 관리자</div>
+            <div style={{ fontSize: 20, fontWeight: 'bold' }}>🛠 MeiYing-review 관리자</div>
             <div style={{ fontSize: 12, color: '#95a5a6', marginTop: 2 }}>Review Management Dashboard</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -471,11 +471,11 @@ export default function AdminPage() {
                         </div>
 
                         <div style={{ flex: 1, minWidth: 150 }}>
-                          <span style={{ fontWeight: 'bold', fontSize: 14, color: '#2c3e50' }}>{app.account_holder}</span>
+                          <span style={{ fontWeight: 'bold', fontSize: 14, color: '#2c3e50' }}>{app.recipient || app.account_holder}</span>
                           <span style={{ color: '#888', fontSize: 12, marginLeft: 6 }}>{app.store_name}</span>
                         </div>
                         <div style={{ fontSize: 12, color: '#555', flexShrink: 0 }}>
-                          {app.bank_name} {app.account_number}
+                          {app.order_number && <span style={{ marginRight: 8 }}>주문번호: {app.order_number}</span>}
                           {(() => {
                             const base = Number(String(app.amount || '').replace(/[^0-9]/g, '')) || 0
                             const rtInfo = getReviewTypeInfo(app.review_type)

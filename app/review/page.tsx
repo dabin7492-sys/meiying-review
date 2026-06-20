@@ -5,8 +5,7 @@ import { useState, useEffect, useRef } from 'react'
 interface Store { id: string; name: string }
 interface Application {
   id: string; store_name: string; order_number: string; recipient: string
-  phone: string; address: string; bank_name: string; account_number: string
-  account_holder: string; amount: string; purchase_images: string[]
+  amount: string; purchase_images: string[]
   status: string; created_at: string
   review_type: string | null
 }
@@ -14,20 +13,19 @@ interface Application {
 const REVIEW_FEE: Record<string, number> = { text: 1000, photo: 1000, star: 500 }
 const REVIEW_LABEL: Record<string, string> = { text: '텍스트', photo: '포토', star: '별점' }
 
-const FORMAT = '주문번호/수취인/연락처(-)/주소/은행명/계좌번호(-)/예금주/금액'
+const FORMAT = '이름/주문번호/금액'
 
 function validateLine(line: string): { ok: boolean; errors: string[] } {
   const parts = line.split('/')
   const errors: string[] = []
-  if (parts.length !== 8) {
-    errors.push(`항목이 ${parts.length}개입니다 (/ 가 ${parts.length - 1}개, 7개여야 함)`)
+  if (parts.length !== 3) {
+    errors.push(`항목이 ${parts.length}개입니다 (/ 가 ${parts.length - 1}개, 2개여야 함)`)
     return { ok: false, errors }
   }
-  const [, , phone, , , account] = parts
-  const phoneDashes = (phone.match(/-/g) || []).length
-  if (phoneDashes !== 2) errors.push(`연락처 "-" 가 ${phoneDashes}개입니다 (2개여야 함): "${phone.trim()}"`)
-  const accDashes = (account.match(/-/g) || []).length
-  if (accDashes !== 2) errors.push(`계좌번호 "-" 가 ${accDashes}개입니다 (2개여야 함): "${account.trim()}"`)
+  const [name, orderNum, amount] = parts
+  if (!name?.trim()) errors.push('이름이 비어있습니다')
+  if (!orderNum?.trim()) errors.push('주문번호가 비어있습니다')
+  if (!amount?.trim()) errors.push('금액이 비어있습니다')
   return { ok: errors.length === 0, errors }
 }
 
@@ -61,13 +59,10 @@ export default function ReviewPage() {
   const [selectedStore, setSelectedStore] = useState('')
   const [purchaseType, setPurchaseType] = useState('')
   const [orderInfo, setOrderInfo] = useState('')
-  const [searchFiles, setSearchFiles] = useState<File[]>([])
-  const [searchPreviews, setSearchPreviews] = useState<string[]>([])
   const [purchaseFiles, setPurchaseFiles] = useState<File[]>([])
   const [purchasePreviews, setPurchasePreviews] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [submitLog, setSubmitLog] = useState<string[]>([])
-  const searchRef = useRef<HTMLInputElement>(null)
   const purchaseRef = useRef<HTMLInputElement>(null)
 
   const [searchName, setSearchName] = useState('')
@@ -153,41 +148,64 @@ export default function ReviewPage() {
     : []
   const hasErrors = validationResults.some(r => !r.ok)
 
+  // 양식에서 이름/주문번호/금액 파싱
+  const parseOrderLine = (line: string) => {
+    const parts = line.split('/')
+    return {
+      recipient: parts[0]?.trim() || '',
+      order_number: parts[1]?.trim() || '',
+      amount: parts[2]?.trim().replace(/[^0-9]/g, '') || '',
+    }
+  }
+
   const handleApply = async () => {
-    if (!selectedStore) { showToast('스토어명을 선택하세요.', 'info'); return }
-    if (!purchaseType) { showToast('리뷰 유형을 선택하세요. (빈박/실배/회수)', 'info'); return }
+    if (!selectedStore) { showToast('제품을 선택하세요.', 'info'); return }
     if (!orderInfo.trim()) { showToast('주문 정보를 입력하세요.', 'info'); return }
     if (hasErrors) { showToast('입력 형식 오류가 있습니다. 빨간 줄을 확인해주세요.', 'error'); return }
-    if (searchFiles.length === 0) { showToast('검색 캡쳐를 1장 이상 첨부해주세요. (필수)', 'error'); return }
-    if (purchaseFiles.length < 2) { showToast('찜/구매내역/장바구니 캡쳐를 2장 이상 첨부해주세요. (필수)', 'error'); return }
+    if (purchaseFiles.length === 0) { showToast('구매 캡쳐를 1장 이상 첨부해주세요. (필수)', 'error'); return }
     setSubmitting(true)
     setSubmitLog(['데이터 분석 중...'])
     try {
-      let allImageUrls: string[] = []
-      if (searchFiles.length > 0) {
-        setSubmitLog(p => [...p, `검색 캡쳐 ${searchFiles.length}장 업로드 중...`])
-        const urls = await uploadImages(searchFiles, 'purchase')
-        allImageUrls = [...allImageUrls, ...urls]
-        setSubmitLog(p => [...p, `검색 캡쳐 업로드 완료 (${urls.length}장)`])
-      }
-      if (purchaseFiles.length > 0) {
-        setSubmitLog(p => [...p, `구매내역 캡쳐 ${purchaseFiles.length}장 업로드 중...`])
-        const urls = await uploadImages(purchaseFiles, 'purchase')
-        allImageUrls = [...allImageUrls, ...urls]
-        setSubmitLog(p => [...p, `구매내역 캡쳐 업로드 완료 (${urls.length}장)`])
-      }
+      setSubmitLog(p => [...p, `구매 캡쳐 ${purchaseFiles.length}장 업로드 중...`])
+      const imageUrls = await uploadImages(purchaseFiles, 'purchase')
+      setSubmitLog(p => [...p, `업로드 완료 (${imageUrls.length}장)`])
+
+      // 각 줄을 개별 신청으로 처리
+      const lines = orderInfo.trim().split('\n').filter(l => l.trim())
+      const records = lines.map(line => {
+        const p = parseOrderLine(line)
+        return {
+          store_name: selectedStore,
+          purchase_type: purchaseType || null,
+          order_info: line,
+          order_number: p.order_number,
+          recipient: p.recipient,
+          phone: '',
+          address: '',
+          bank_name: '',
+          account_number: '',
+          account_holder: p.recipient,
+          amount: p.amount,
+          purchase_images: imageUrls,
+        }
+      })
+
       setSubmitLog(p => [...p, '서버에 신청 정보 전송 중...'])
       const res = await fetch('/api/applications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ store_name: selectedStore, purchase_type: purchaseType, order_info: orderInfo, purchase_images: allImageUrls }),
+        body: JSON.stringify({
+          store_name: selectedStore,
+          purchase_type: purchaseType || null,
+          order_info: orderInfo,
+          purchase_images: imageUrls,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setSubmitLog(p => [...p, `✅ ${data.count}건 신청 완료!`])
       showToast(`${data.count}건 신청이 완료되었습니다!`, 'success')
       setSelectedStore(''); setPurchaseType(''); setOrderInfo('')
-      setSearchFiles([]); setSearchPreviews([])
       setPurchaseFiles([]); setPurchasePreviews([])
       setTimeout(() => setSubmitLog([]), 3000)
     } catch {
@@ -197,7 +215,7 @@ export default function ReviewPage() {
   }
 
   const handleSearch = async () => {
-    if (!searchName.trim()) { showToast('예금주명을 입력하세요.', 'info'); return }
+    if (!searchName.trim()) { showToast('이름을 입력하세요.', 'info'); return }
     setSearching(true); setApplications([]); setSelectedIds(new Set())
     try {
       const res = await fetch(`/api/applications?account_holder=${encodeURIComponent(searchName.trim())}`)
@@ -205,7 +223,7 @@ export default function ReviewPage() {
       if (!res.ok) throw new Error(data.error)
       const list = Array.isArray(data) ? data : []
       setApplications(list)
-      if (list.length === 0) showToast('조회되는 예금주명이 없습니다. 다시 확인해주세요.', 'info')
+      if (list.length === 0) showToast('조회되는 이름이 없습니다. 다시 확인해주세요.', 'info')
     } catch {
       showToast('조회 중 오류가 발생했습니다. 다시 시도해주세요.', 'error')
     }
@@ -245,7 +263,6 @@ export default function ReviewPage() {
 
   const pendingCount = applications.filter(a => a.status !== '리뷰제출완료').length
 
-  // 주황 계열 색상 팔레트
   const PRIMARY = '#e67e22'
   const PRIMARY_DARK = '#d35400'
   const PRIMARY_LIGHT = '#f39c12'
@@ -287,26 +304,17 @@ export default function ReviewPage() {
           {activeTab === 1 && (
             <div>
               <div style={fgStyle}>
-                <label style={labelStyle}>1. 스토어명</label>
+                <label style={labelStyle}>1. 제품 선택</label>
                 <select value={selectedStore} onChange={e => setSelectedStore(e.target.value)} style={{ ...inputStyle, borderColor: BORDER }}>
-                  <option value="">스토어명</option>
+                  <option value="">제품을 선택하세요</option>
                   {stores.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                 </select>
               </div>
 
               <div style={fgStyle}>
-                <label style={labelStyle}>2. 리뷰 유형</label>
-                <select value={purchaseType} onChange={e => setPurchaseType(e.target.value)} style={{ ...inputStyle, borderColor: BORDER }}>
-                  <option value="">리뷰 유형</option>
-                  <option value="빈박">빈박</option>
-                  <option value="실배">실배</option>
-                  <option value="회수">회수</option>
-                </select>
-              </div>
-
-              <div style={fgStyle}>
-                <label style={labelStyle}>3. 주문 정보 입력</label>
+                <label style={labelStyle}>2. 주문 정보 입력</label>
                 <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '14px 16px', marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>아래 양식에 맞게 입력해주세요 (여러 건은 줄바꿈)</div>
                   <div style={{ fontFamily: 'monospace', fontSize: 13, color: '#333', background: 'white', border: `1px solid #fde8c8`, borderRadius: 6, padding: '10px 12px', marginBottom: 10, wordBreak: 'break-all', letterSpacing: 0.2 }}>
                     {FORMAT}
                   </div>
@@ -317,7 +325,7 @@ export default function ReviewPage() {
                 </div>
 
                 <textarea value={orderInfo} onChange={e => setOrderInfo(e.target.value)} rows={6}
-                  placeholder="여기에 주문 정보를 입력하세요. (줄바꿈으로 여러 건 입력 가능)"
+                  placeholder={`예시:\n홍길동/20240001/15000\n김철수/20240002/9900`}
                   style={{ ...inputStyle, resize: 'none', lineHeight: 1.6, fontFamily: 'inherit', borderColor: hasErrors ? '#e74c3c' : BORDER }} />
 
                 {validationResults.length > 0 && (
@@ -337,42 +345,17 @@ export default function ReviewPage() {
               </div>
 
               <div style={fgStyle}>
-                <label style={labelStyle}>4. 이미지 첨부</label>
-
-                {/* 검색 캡쳐 */}
-                <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <span style={{ fontWeight: 'bold', fontSize: 13, color: PRIMARY_DARK }}>🔍 검색 캡쳐</span>
-                    <span style={{ fontSize: 11, color: '#e74c3c', fontWeight: 'bold', background: '#fde8e8', padding: '2px 8px', borderRadius: 10 }}>1장 이상 제출 필수</span>
-                  </div>
-                  <input ref={searchRef} type="file" accept="image/*" multiple id="search-file-input"
-                    onChange={e => { addFiles(Array.from(e.target.files || []), setSearchFiles, setSearchPreviews); e.target.value = '' }}
-                    style={{ display: 'none' }} />
-                  <label htmlFor="search-file-input" style={{ display: 'block', width: '100%', padding: '14px', background: 'linear-gradient(135deg, #3498db, #2980b9)', color: 'white', borderRadius: 8, textAlign: 'center', fontWeight: 'bold', fontSize: 15, cursor: 'pointer', boxSizing: 'border-box', letterSpacing: 0.5, boxShadow: '0 3px 10px rgba(52,152,219,0.35)' }}>
-                    🔍 검색 캡쳐 사진 선택
-                  </label>
-                  {searchPreviews.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-                      {searchPreviews.map((src, i) => (
-                        <div key={i} style={{ position: 'relative' }}>
-                          <img src={src} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: `1px solid ${BORDER}` }} />
-                          <button onClick={() => removeFile(i, setSearchFiles, setSearchPreviews)}
-                            style={{ position: 'absolute', top: -6, right: -6, background: '#e74c3c', color: 'white', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: '20px' }}>×</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {searchFiles.length > 0 && <div style={{ fontSize: 12, color: '#888', marginTop: 6 }}>{searchFiles.length}장 선택됨</div>}
-                </div>
-
-                {/* 구매내역 캡쳐 */}
+                <label style={labelStyle}>3. 구매 캡쳐 첨부</label>
                 <div style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontWeight: 'bold', fontSize: 13, color: PRIMARY_DARK, marginBottom: 10 }}>🛒 찜 / 구매내역 / 장바구니 캡쳐</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ fontWeight: 'bold', fontSize: 13, color: PRIMARY_DARK }}>🛒 구매 캡쳐</span>
+                    <span style={{ fontSize: 11, color: '#e74c3c', fontWeight: 'bold', background: '#fde8e8', padding: '2px 8px', borderRadius: 10 }}>1장 이상 필수</span>
+                  </div>
                   <input ref={purchaseRef} type="file" accept="image/*" multiple id="purchase-file-input"
                     onChange={e => { addFiles(Array.from(e.target.files || []), setPurchaseFiles, setPurchasePreviews); e.target.value = '' }}
                     style={{ display: 'none' }} />
-                  <label htmlFor="purchase-file-input" style={{ display: 'block', width: '100%', padding: '14px', background: 'linear-gradient(135deg, #27ae60, #1e8449)', color: 'white', borderRadius: 8, textAlign: 'center', fontWeight: 'bold', fontSize: 15, cursor: 'pointer', boxSizing: 'border-box', letterSpacing: 0.5, boxShadow: '0 3px 10px rgba(39,174,96,0.35)' }}>
-                    🛒 구매내역 캡쳐 사진 선택
+                  <label htmlFor="purchase-file-input" style={{ display: 'block', width: '100%', padding: '14px', background: `linear-gradient(135deg, ${PRIMARY}, ${PRIMARY_LIGHT})`, color: 'white', borderRadius: 8, textAlign: 'center', fontWeight: 'bold', fontSize: 15, cursor: 'pointer', boxSizing: 'border-box', letterSpacing: 0.5, boxShadow: `0 3px 10px rgba(230,126,34,0.35)` }}>
+                    🛒 구매 캡쳐 사진 선택
                   </label>
                   {purchasePreviews.length > 0 && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
@@ -408,11 +391,11 @@ export default function ReviewPage() {
               <h3 style={{ textAlign: 'center', color: PRIMARY_DARK, marginTop: 0, marginBottom: 24, fontSize: 17 }}>리뷰 제출 및 조회</h3>
 
               <div style={fgStyle}>
-                <label style={labelStyle}>예금주명 입력</label>
+                <label style={labelStyle}>이름 입력</label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input type="text" value={searchName} onChange={e => setSearchName(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                    placeholder="신청하신 예금주명을 입력하세요"
+                    placeholder="신청하신 이름을 입력하세요"
                     style={{ ...inputStyle, flex: 1, borderColor: BORDER }} />
                   <button onClick={handleSearch} disabled={searching}
                     style={{ padding: '10px 18px', background: PRIMARY, color: 'white', border: 'none', borderRadius: 8, fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -462,9 +445,9 @@ export default function ReviewPage() {
                               </span>
                             </div>
                             <div style={{ fontSize: 12, color: '#555', lineHeight: 1.8 }}>
-                              주문번호: <strong>{app.order_number || '-'}</strong>
+                              이름: <strong>{app.recipient || '-'}</strong>
                               <span style={{ margin: '0 6px', color: '#ddd' }}>|</span>
-                              수취인: <strong>{app.recipient || '-'}</strong>
+                              주문번호: <strong>{app.order_number || '-'}</strong>
                             </div>
                             <div style={{ fontSize: 12, color: '#555', lineHeight: 1.8 }}>
                               {(() => {
@@ -483,9 +466,6 @@ export default function ReviewPage() {
                                 }
                                 return <span>상품 금액: <strong>{base > 0 ? base.toLocaleString() + '원' : '-'}</strong></span>
                               })()}
-                            </div>
-                            <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>
-                              {app.bank_name} {app.account_number} ({app.account_holder})
                             </div>
                             <div style={{ fontSize: 11, color: '#bbb', marginTop: 2 }}>
                               신청일: {new Date(app.created_at).toLocaleString('ko-KR')}
@@ -532,7 +512,7 @@ export default function ReviewPage() {
                 <div style={{ textAlign: 'center', color: '#999', padding: '40px 0', fontSize: 14 }}>신청된 내역이 없습니다.</div>
               )}
               {!searchName && (
-                <div style={{ textAlign: 'center', color: '#ccc', padding: '40px 0', fontSize: 14 }}>예금주명을 입력하고 조회해 주세요.</div>
+                <div style={{ textAlign: 'center', color: '#ccc', padding: '40px 0', fontSize: 14 }}>이름을 입력하고 조회해 주세요.</div>
               )}
             </div>
           )}

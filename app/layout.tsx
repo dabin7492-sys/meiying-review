@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Suzzzy-review',
+  title: 'MeiYing-review',
   description: '리뷰 모집 관리 플랫폼',
   openGraph: {
-    title: 'Suzzzy-review',
+    title: 'MeiYing-review',
     description: '리뷰 모집 관리 플랫폼',
     images: [{ url: '/blank.png', width: 1, height: 1, alt: '' }],
   },
