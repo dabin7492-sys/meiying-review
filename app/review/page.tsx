@@ -522,7 +522,7 @@ export default function ReviewPage() {
       {/* 하단 배너 */}
       <div style={{ maxWidth: 640, margin: '0 auto', display: 'flex', justifyContent: 'center', padding: '12px 0 20px' }}>
         <a href="https://open.kakao.com/o/skaNUiAi" target="_blank" rel="noopener noreferrer">
-          <img src="/contact-banner.png" alt="모집 사이트 제작 문의" style={{ width: '570px', height: 'auto', display: 'block', cursor: 'pointer' }} />
+          <img src="/contact-banner.png" alt="모집 사이트 제작 문의" style={{ width: '100%', maxWidth: '570px', height: 'auto', display: 'block', cursor: 'pointer' }} />
         </a>
       </div>
     </div>
