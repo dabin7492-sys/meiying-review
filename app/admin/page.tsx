@@ -282,11 +282,11 @@ export default function AdminPage() {
             {/* 통계 카드 */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 16 }}>
               {[
-                { label: '전체', val: stats.total, color: '#3498db', icon: '📋', key: 'all' },
-                { label: '구매완료', val: stats.pending, color: '#e67e22', icon: '🛒', key: 'pending' },
-                { label: '리뷰완료', val: stats.submitted, color: '#9b59b6', icon: '📸', key: 'submitted' },
-                { label: '입금 대기', val: stats.unpaid, color: '#f39c12', icon: '💰', key: 'unpaid' },
-                { label: '입금 완료', val: stats.paid, color: '#27ae60', icon: '💸', key: 'paid' },
+                { label: '전체 (全部)', val: stats.total, color: '#3498db', icon: '📋', key: 'all' },
+                { label: '구매완료 (购买完成)', val: stats.pending, color: '#e67e22', icon: '🛒', key: 'pending' },
+                { label: '리뷰완료 (评价完成)', val: stats.submitted, color: '#9b59b6', icon: '📸', key: 'submitted' },
+                { label: '입금 대기 (待汇款)', val: stats.unpaid, color: '#f39c12', icon: '💰', key: 'unpaid' },
+                { label: '입금 완료 (汇款完成)', val: stats.paid, color: '#27ae60', icon: '💸', key: 'paid' },
               ].map(c => (
                 <div key={c.label} onClick={() => setAfStatus(afStatus === c.key ? '' : (c.key === 'all' ? '' : c.key))}
                   style={{ background: 'white', borderRadius: 10, padding: '12px 14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', borderLeft: `4px solid ${c.color}`, cursor: 'pointer', outline: (afStatus === c.key || (c.key === 'all' && afStatus === '')) ? `2px solid ${c.color}` : 'none' }}>
@@ -299,19 +299,19 @@ export default function AdminPage() {
 
             {/* 필터 */}
             <div style={{ background: 'white', borderRadius: 10, padding: '14px 18px', marginBottom: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
-              <div><div style={flStyle}>스토어</div>
+              <div><div style={flStyle}>스토어 (店铺)</div>
                 <select value={afStore} onChange={e => setAfStore(e.target.value)} style={fis}>
-                  <option value="">전체</option>{stores.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                  <option value="">전체 (全部)</option>{stores.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                 </select>
               </div>
-              <div><div style={flStyle}>날짜</div>
+              <div><div style={flStyle}>날짜 (日期)</div>
                 <select value={afDate} onChange={e => setAfDate(e.target.value)} style={fis}>
-                  <option value="">전체 날짜</option>
+                  <option value="">전체 날짜 (全部日期)</option>
                   {availableDates.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
-              <div><div style={flStyle}>예금주</div>
-                <input type="text" value={afHolder} onChange={e => setAfHolder(e.target.value)} onKeyDown={e => e.key === 'Enter' && loadApps()} placeholder="예금주명" style={fis} />
+              <div><div style={flStyle}>이름 (姓名)</div>
+                <input type="text" value={afHolder} onChange={e => setAfHolder(e.target.value)} onKeyDown={e => e.key === 'Enter' && loadApps()} placeholder="이름 입력 (输入姓名)" style={fis} />
               </div>
               <button onClick={loadApps} style={{ padding: '8px 18px', background: '#3498db', color: 'white', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer', height: 36 }}>🔄 새로고침</button>
               {afStatus === 'pending' && (
@@ -591,7 +591,7 @@ export default function AdminPage() {
                               {afStatus === 'submitted' && !app.review_checked && (
                                 <button onClick={() => patchApp(app.id, { review_checked: true })}
                                   style={{ padding: '9px 18px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold', fontSize: 13, background: '#e8d5f5', color: '#6c3483' }}>
-                                  ✅ 리뷰 확인
+                                  ✅ 리뷰 확인 (确认评价)
                                 </button>
                               )}
 
@@ -599,7 +599,7 @@ export default function AdminPage() {
                               {afStatus === 'unpaid' && app.review_checked && !app.payment_done && (
                                 <button onClick={() => patchApp(app.id, { payment_done: true })}
                                   style={{ padding: '9px 18px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold', fontSize: 13, background: '#d5f5e3', color: '#1e8449' }}>
-                                  💸 입금 완료 처리
+                                  💸 입금 완료 (汇款完成)
                                 </button>
                               )}
 
@@ -607,7 +607,7 @@ export default function AdminPage() {
                               {afStatus === 'paid' && app.payment_done && (
                                 <button onClick={() => patchApp(app.id, { payment_done: false })}
                                   style={{ padding: '9px 18px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold', fontSize: 13, background: '#fef3cd', color: '#856404' }}>
-                                  🔄 입금 취소
+                                  🔄 입금 취소 (取消汇款)
                                 </button>
                               )}
 
@@ -617,12 +617,12 @@ export default function AdminPage() {
                                   {!app.review_checked && (
                                     <button onClick={() => patchApp(app.id, { review_checked: true })}
                                       style={{ padding: '9px 18px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold', fontSize: 13, background: '#e8d5f5', color: '#6c3483' }}>
-                                      ✅ 리뷰 확인
+                                      ✅ 리뷰 확인 (确认评价)
                                     </button>
                                   )}
                                   <button onClick={() => patchApp(app.id, { payment_done: !app.payment_done })}
                                     style={{ padding: '9px 18px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold', fontSize: 13, background: app.payment_done ? '#fef3cd' : '#d5f5e3', color: app.payment_done ? '#856404' : '#1e8449' }}>
-                                    {app.payment_done ? '🔄 입금 취소' : '💸 입금 완료 처리'}
+                                    {app.payment_done ? '🔄 입금 취소 (取消汇款)' : '💸 입금 완료 (汇款完成)'}
                                   </button>
                                 </>
                               )}
