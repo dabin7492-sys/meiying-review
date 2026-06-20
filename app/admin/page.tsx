@@ -310,8 +310,8 @@ export default function AdminPage() {
                   {availableDates.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
-              <div><div style={flStyle}>이름 (姓名)</div>
-                <input type="text" value={afHolder} onChange={e => setAfHolder(e.target.value)} onKeyDown={e => e.key === 'Enter' && loadApps()} placeholder="이름 입력 (输入姓名)" style={fis} />
+              <div><div style={flStyle}>예금주 (姓名)</div>
+                <input type="text" value={afHolder} onChange={e => setAfHolder(e.target.value)} onKeyDown={e => e.key === 'Enter' && loadApps()} placeholder="예금주명 (输入姓名)" style={fis} />
               </div>
               <button onClick={loadApps} style={{ padding: '8px 18px', background: '#3498db', color: 'white', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer', height: 36 }}>🔄 새로고침</button>
               {afStatus === 'pending' && (
