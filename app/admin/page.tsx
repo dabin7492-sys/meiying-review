@@ -267,7 +267,7 @@ export default function AdminPage() {
                 background: tab === t ? '#3498db' : 'rgba(255,255,255,0.12)',
                 color: 'white',
               }}>
-                {t === 'applications' ? '📝 신청 내역' : '🏪 스토어 관리'}
+                {t === 'applications' ? '📝 신청 내역' : '🏪 제품 관리'}
               </button>
             ))}
           </div>
